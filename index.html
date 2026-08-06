@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ca-valencia">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avaluador de rúbriques</title>
+<meta name="description" content="Avaluació amb rúbriques per a l'aula: autoavaluació, coavaluació i heteroavaluació amb l'alumnat identificat per número. Sense comptes ni servidors: els resultats es descarreguen en full de càlcul.">
+<style>
+  :root{
+    --fons:#f7f4ef; --carta:#fffdfa; --tinta:#2b2a28; --suau:#6f6a62;
+    --vora:#e2dcd2; --acc:#b8442e; --acc-fluix:#f3e2dd;
+    --verd:#3f7a52; --verd-fluix:#e4efe7; --ambre:#c98a17;
+    --ombra:0 1px 2px rgba(43,42,40,.05), 0 8px 24px rgba(43,42,40,.07);
+    --radi:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --fons:#1a1917; --carta:#232220; --tinta:#f0ece5; --suau:#a49d92;
+           --vora:#38352f; --acc:#e0714f; --acc-fluix:#3a2620;
+           --verd:#7bb98d; --verd-fluix:#22302a; --ambre:#e5b34a;
+           --ombra:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fons);color:var(--tinta);line-height:1.55;
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .embolcall{max-width:860px;margin:0 auto;padding:26px 18px 70px}
+  header h1{font-size:1.45rem;margin:0 0 2px;letter-spacing:-.02em}
+  header p{margin:0;color:var(--suau);font-size:.92rem}
+  nav{display:flex;gap:6px;margin:22px 0 18px;flex-wrap:wrap}
+  nav button{flex:1 1 auto;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;
+    padding:9px 14px;border-radius:999px;border:1px solid var(--vora);
+    background:var(--carta);color:var(--suau)}
+  nav button[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:#fff}
+  .carta{background:var(--carta);border:1px solid var(--vora);border-radius:var(--radi);
+         padding:22px;box-shadow:var(--ombra);margin-bottom:18px}
+  h2{font-size:1.05rem;margin:0 0 4px;letter-spacing:-.01em}
+  h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.09em;color:var(--suau);
+     margin:0 0 14px;font-weight:600}
+  .ajuda{font-size:.85rem;color:var(--suau);margin:6px 0 0}
+  label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}
+  input,select,textarea{width:100%;font:inherit;padding:10px 12px;border-radius:9px;
+    border:1px solid var(--vora);background:var(--fons);color:var(--tinta)}
+  textarea{min-height:70px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:1px;border-color:transparent}
+  button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;
+    border:1px solid var(--vora);background:var(--carta);color:var(--tinta);
+    padding:11px 16px;transition:transform .06s ease,filter .15s ease}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .primari{background:var(--acc);border-color:var(--acc);color:#fff}
+  .primari:hover{filter:brightness(1.06)}
+  .fila{display:flex;gap:10px;flex-wrap:wrap}
+  .fila>*{flex:1 1 190px}
+  .modes{display:grid;gap:8px;grid-template-columns:1fr;margin-bottom:16px}
+  @media(min-width:620px){.modes{grid-template-columns:repeat(3,1fr)}}
+  .mode{text-align:left;padding:13px 15px;line-height:1.35}
+  .mode span{display:block;font-weight:400;font-size:.8rem;color:var(--suau);margin-top:3px}
+  .mode[aria-pressed=true]{background:var(--acc-fluix);border-color:var(--acc);color:var(--acc)}
+  .mode[aria-pressed=true] span{color:var(--acc)}
+  /* criteris */
+  .criteri{border-top:1px solid var(--vora);padding-top:18px;margin-top:18px}
+  .criteri:first-of-type{border-top:0;padding-top:0;margin-top:0}
+  .cap{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+  .cap b{font-size:1rem}
+  .pes{font-size:.78rem;color:var(--suau);white-space:nowrap}
+  .nivells{display:grid;gap:8px}
+  .nivell{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;
+    border:1px solid var(--vora);border-radius:11px;cursor:pointer;background:var(--fons)}
+  .nivell:hover{border-color:var(--suau)}
+  .nivell input{width:auto;flex:0 0 auto;margin-top:3px;accent-color:var(--acc)}
+  .nivell.triat{border-color:var(--acc);background:var(--acc-fluix)}
+  .nivell .et{font-weight:600;font-size:.9rem;display:block}
+  .nivell .de{font-size:.86rem;color:var(--suau);display:block}
+  .nivell.triat .de{color:var(--acc)}
+  /* resultat */
+  .nota{display:flex;align-items:baseline;justify-content:center;gap:8px;
+    background:var(--verd-fluix);border-radius:12px;padding:20px;margin-bottom:16px}
+  .nota b{font-size:3.2rem;line-height:1;font-weight:700;color:var(--verd);
+    font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+  .nota span{color:var(--verd);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--vora)}
+  th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--suau)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .buit{color:var(--suau);font-size:.9rem;text-align:center;padding:26px 10px}
+  .avis{background:var(--acc-fluix);color:var(--acc);border-radius:10px;padding:11px 14px;
+    font-size:.88rem;font-weight:600;margin-bottom:14px}
+  footer{margin-top:32px;text-align:center;font-size:.82rem;color:var(--suau)}
+  footer a{color:var(--suau)}
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div class="embolcall">
+  <header>
+    <h1>Avaluador de rúbriques</h1>
+    <p id="sub">Autoavaluació, coavaluació i heteroavaluació amb l'alumnat identificat per número.</p>
+  </header>
+
+  <nav role="tablist">
+    <button role="tab" id="t-avaluar" aria-selected="true">Avaluar</button>
+    <button role="tab" id="t-registre" aria-selected="false">Registre</button>
+    <button role="tab" id="t-rubrica" aria-selected="false">Rúbrica</button>
+  </nav>
+
+  <!-- ============ AVALUAR ============ -->
+  <section id="p-avaluar">
+    <div class="carta" id="pas-qui">
+      <h3>Qui avalua</h3>
+      <div class="modes">
+        <button class="mode" data-mode="auto" aria-pressed="true">Autoavaluació<span>M'avalue jo mateix</span></button>
+        <button class="mode" data-mode="co" aria-pressed="false">Coavaluació<span>Avalue un company o companya</span></button>
+        <button class="mode" data-mode="hetero" aria-pressed="false">Heteroavaluació<span>Avalua la professora</span></button>
+      </div>
+      <div class="fila">
+        <div>
+          <label for="avaluador" id="l-avaluador">El teu número</label>
+          <input type="text" id="avaluador" inputmode="numeric" placeholder="p. ex. 12">
+        </div>
+        <div id="c-avaluat">
+          <label for="avaluat">Número de qui avalues</label>
+          <input type="text" id="avaluat" inputmode="numeric" placeholder="p. ex. 7">
+        </div>
+      </div>
+      <p class="ajuda">Només números, mai noms: així les valoracions entre companys es queden pseudonimitzades.</p>
+    </div>
+
+    <div class="carta">
+      <h2 id="r-titol">—</h2>
+      <p class="ajuda" id="r-desc" style="margin-bottom:18px"></p>
+      <div id="criteris"></div>
+      <div style="margin-top:20px">
+        <label for="comentari">Comentari (optatiu)</label>
+        <textarea id="comentari" placeholder="Què destacaries? Què es podria millorar?"></textarea>
+      </div>
+    </div>
+
+    <div class="carta">
+      <div id="alerta" class="avis" hidden></div>
+      <div class="nota"><b id="nota">—</b><span>sobre 10</span></div>
+      <table id="desglossament"></table>
+      <div class="fila" style="margin-top:18px">
+        <button class="primari" id="btn-desa">Desa l'avaluació</button>
+        <button id="btn-neteja">Buida el formulari</button>
+      </div>
+      <p class="ajuda">En desar-la, es guarda en el registre d'este navegador. Res no ix del teu dispositiu.</p>
+    </div>
+  </section>
+
+  <!-- ============ REGISTRE ============ -->
+  <section id="p-registre" hidden>
+    <div class="carta">
+      <h3>Avaluacions guardades</h3>
+      <div id="taula-registre"></div>
+      <div class="fila" style="margin-top:18px">
+        <button class="primari" id="btn-csv">Descarrega el full de càlcul</button>
+        <button id="btn-buida">Buida el registre</button>
+      </div>
+      <p class="ajuda">El fitxer .csv s'obri amb Excel, LibreOffice o Fulls de càlcul de Google, i les columnes coincidixen amb el full «Avaluacions».</p>
+    </div>
+
+    <div class="carta">
+      <h3>Resum per alumne</h3>
+      <div id="taula-resum"></div>
+      <p class="ajuda" id="ajuda-pesos"></p>
+    </div>
+  </section>
+
+  <!-- ============ RÚBRICA ============ -->
+  <section id="p-rubrica" hidden>
+    <div class="carta">
+      <h3>Quina rúbrica s'està usant</h3>
+      <p id="info-rubrica"></p>
+      <div class="fila" style="margin-top:16px">
+        <button id="btn-carrega">Carrega una rúbrica (.json)</button>
+        <button id="btn-original">Torna a la d'exemple</button>
+      </div>
+      <input type="file" id="fitxer" accept=".json,application/json" hidden>
+      <p class="ajuda">Fitxer amb el mateix format que genera l'assistent de rúbriques: títol, pesos i criteris amb els seus nivells.</p>
+    </div>
+    <div class="carta">
+      <h3>Contingut</h3>
+      <div id="vista-rubrica"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Eina lliure per a l'aula · no guarda cap dada en cap servidor.</p>
+    <p><strong><a href="https://sandrafortanet.netlify.app/" target="_blank" rel="noopener">@sanforbel · sandrafortanet.netlify.app</a></strong><br>
+    Llicència <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ca">CC BY-SA 4.0</a></p>
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- Rúbrica d'exemple ---------------- */
+var EXEMPLE = {
+  meta:{
+    titol:"Rúbrica d'exposició oral",
+    descripcio:"Rúbrica per a avaluar una exposició oral individual o en grup, pensada per a autoavaluació, coavaluació i heteroavaluació.",
+    pesosMode:{hetero:60,co:25,auto:15}
+  },
+  criteris:[
+    {id:"c1",nom:"Contingut i estructura",pes:30,nivells:[
+      {id:"n1",etiqueta:"Excel·lent",valor:10,descriptor:"L'exposició té una introducció, un desenvolupament i una conclusió clars. Les idees estan ben organitzades i s'ajusten al tema proposat."},
+      {id:"n2",etiqueta:"Notable",valor:7,descriptor:"L'exposició té estructura, encara que alguna part és menys clara. Les idees principals s'entenen bé."},
+      {id:"n3",etiqueta:"Suficient",valor:5,descriptor:"L'exposició té alguna part desordenada i costa seguir el fil, però el tema es reconeix."},
+      {id:"n4",etiqueta:"Insuficient",valor:2,descriptor:"No hi ha una estructura clara i costa entendre de què tracta l'exposició."}]},
+    {id:"c2",nom:"Llenguatge i expressió oral",pes:25,nivells:[
+      {id:"n1",etiqueta:"Excel·lent",valor:10,descriptor:"Parla amb fluïdesa, vocabulari variat i pronunciació clara. Fa un ús correcte de la llengua."},
+      {id:"n2",etiqueta:"Notable",valor:7,descriptor:"Parla amb fluïdesa general, encara que comet alguns errors puntuals de llengua."},
+      {id:"n3",etiqueta:"Suficient",valor:5,descriptor:"Llig massa sovint les notes i el vocabulari és bàsic, però s'entén el missatge."},
+      {id:"n4",etiqueta:"Insuficient",valor:2,descriptor:"Costa molt d'entendre'l perquè llig tot el temps o el vocabulari és molt limitat."}]},
+    {id:"c3",nom:"Suport visual i recursos",pes:20,nivells:[
+      {id:"n1",etiqueta:"Excel·lent",valor:10,descriptor:"El suport visual (diapositives, esquemes, imatges) reforça el contingut i està ben dissenyat."},
+      {id:"n2",etiqueta:"Notable",valor:7,descriptor:"El suport visual ajuda a seguir l'exposició, encara que té alguna mancança de disseny."},
+      {id:"n3",etiqueta:"Suficient",valor:5,descriptor:"Hi ha suport visual, però conté massa text o no aporta gaire a l'exposició oral."},
+      {id:"n4",etiqueta:"Insuficient",valor:2,descriptor:"No hi ha suport visual o este no té relació amb el contingut exposat."}]},
+    {id:"c4",nom:"Actitud i interacció amb el públic",pes:25,nivells:[
+      {id:"n1",etiqueta:"Excel·lent",valor:10,descriptor:"Mira el públic, mostra seguretat i respon bé a les preguntes que li fan."},
+      {id:"n2",etiqueta:"Notable",valor:7,descriptor:"Mira el públic la major part del temps i respon a les preguntes amb alguna ajuda."},
+      {id:"n3",etiqueta:"Suficient",valor:5,descriptor:"Mira poc el públic i li costa respondre a les preguntes."},
+      {id:"n4",etiqueta:"Insuficient",valor:2,descriptor:"No mira el públic en cap moment i no és capaç de respondre a les preguntes."}]}
+  ]
+};
+
+var CLAU_R = "avaluador-rubrica", CLAU_D = "avaluador-dades";
+var NOMS = {auto:"Autoavaluació", co:"Coavaluació", hetero:"Heteroavaluació"};
+
+var rubrica = EXEMPLE, mode = "auto", tria = {}, registre = [];
+
+/* ---------------- Emmagatzematge ---------------- */
+function guarda(clau, valor){
+  try{ localStorage.setItem(clau, JSON.stringify(valor)); }catch(e){}
+}
+function recupera(clau){
+  try{ return JSON.parse(localStorage.getItem(clau) || "null"); }catch(e){ return null; }
+}
+
+/* ---------------- Utilitats ---------------- */
+function $(id){ return document.getElementById(id); }
+function esc(t){
+  return String(t == null ? "" : t)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function num(n){ return (Math.round(n * 100) / 100).toString().replace(".", ","); }
+
+function validaRubrica(r){
+  if(!r || typeof r !== "object") return "El fitxer no conté una rúbrica.";
+  if(!r.criteris || !r.criteris.length) return "La rúbrica no té cap criteri.";
+  for(var i = 0; i < r.criteris.length; i++){
+    var c = r.criteris[i];
+    if(!c.nivells || !c.nivells.length) return "El criteri «" + (c.nom || (i+1)) + "» no té nivells.";
+  }
+  return null;
+}
+
+/* ---------------- Pestanyes ---------------- */
+var pestanyes = [["t-avaluar","p-avaluar"],["t-registre","p-registre"],["t-rubrica","p-rubrica"]];
+pestanyes.forEach(function(par){
+  $(par[0]).addEventListener("click", function(){
+    pestanyes.forEach(function(p){
+      var actiu = p[0] === par[0];
+      $(p[0]).setAttribute("aria-selected", String(actiu));
+      $(p[1]).hidden = !actiu;
+    });
+    if(par[0] === "t-registre") pintaRegistre();
+    if(par[0] === "t-rubrica") pintaVistaRubrica();
+  });
+});
+
+/* ---------------- Mode ---------------- */
+Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){
+  b.addEventListener("click", function(){
+    mode = b.dataset.mode;
+    Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(x){
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    $("c-avaluat").hidden = (mode === "auto");
+    $("l-avaluador").textContent = (mode === "hetero") ? "El teu nom o inicials" : "El teu número";
+    $("avaluador").placeholder = (mode === "hetero") ? "p. ex. SF" : "p. ex. 12";
+    if(mode === "auto") $("avaluat").value = "";
+  });
+});
+
+/* ---------------- Formulari de la rúbrica ---------------- */
+function pintaCriteris(){
+  $("r-titol").textContent = rubrica.meta && rubrica.meta.titol || "Rúbrica";
+  $("r-desc").textContent = rubrica.meta && rubrica.meta.descripcio || "";
+  var h = "";
+  rubrica.criteris.forEach(function(c, i){
+    h += '<div class="criteri"><div class="cap"><b>' + esc(c.nom || ("Criteri " + (i+1))) +
+         '</b><span class="pes">' + (c.pes != null ? esc(c.pes) + "% de la nota" : "") + '</span></div>' +
+         '<div class="nivells">';
+    c.nivells.forEach(function(n, j){
+      h += '<label class="nivell" data-c="' + i + '" data-n="' + j + '">' +
+           '<input type="radio" name="crit' + i + '" value="' + j + '">' +
+           '<span><span class="et">' + esc(n.etiqueta || "") +
+           (n.valor != null ? " · " + esc(n.valor) : "") + '</span>' +
+           '<span class="de">' + esc(n.descriptor || "") + '</span></span></label>';
+    });
+    h += '</div></div>';
+  });
+  $("criteris").innerHTML = h;
+  tria = {};
+  Array.prototype.forEach.call(document.querySelectorAll(".nivell"), function(l){
+    l.addEventListener("click", function(){
+      var ci = l.dataset.c;
+      Array.prototype.forEach.call(
+        document.querySelectorAll('.nivell[data-c="' + ci + '"]'),
+        function(x){ x.classList.remove("triat"); });
+      l.classList.add("triat");
+      tria[ci] = parseInt(l.dataset.n, 10);
+      calcula();
+    });
+  });
+  calcula();
+}
+
+function pesosNormalitzats(){
+  var total = 0;
+  rubrica.criteris.forEach(function(c){ total += (typeof c.pes === "number" ? c.pes : 0); });
+  // Si la rúbrica no porta pesos (o sumen 0), tots els criteris valen igual.
+  if(!total) return rubrica.criteris.map(function(){ return 1 / rubrica.criteris.length; });
+  return rubrica.criteris.map(function(c){ return (typeof c.pes === "number" ? c.pes : 0) / total; });
+}
+
+function calcula(){
+  var pesos = pesosNormalitzats(), suma = 0, fets = 0, files = "";
+  files = "<tr><th>Criteri</th><th>Nivell</th><th style='text-align:right'>Aporta</th></tr>";
+  rubrica.criteris.forEach(function(c, i){
+    var sel = tria[i], n = (sel != null) ? c.nivells[sel] : null;
+    if(n){
+      fets++;
+      var aporta = (typeof n.valor === "number" ? n.valor : 0) * pesos[i];
+      suma += aporta;
+      files += "<tr><td>" + esc(c.nom) + "</td><td>" + esc(n.etiqueta) +
+               "</td><td class='num'>" + num(aporta) + "</td></tr>";
+    }else{
+      files += "<tr><td>" + esc(c.nom) + "</td><td style='color:var(--suau)'>sense triar</td><td class='num'>—</td></tr>";
+    }
+  });
+  $("desglossament").innerHTML = files;
+  var complet = fets === rubrica.criteris.length;
+  $("nota").textContent = complet ? num(suma) : "—";
+  $("btn-desa").disabled = !complet;
+  var falten = rubrica.criteris.length - fets;
+  $("alerta").hidden = complet;
+  if(!complet) $("alerta").textContent = "Falta triar un nivell en " + falten +
+    (falten === 1 ? " criteri." : " criteris.");
+  return complet ? suma : null;
+}
+
+/* ---------------- Desar ---------------- */
+$("btn-desa").addEventListener("click", function(){
+  var nota = calcula();
+  if(nota == null) return;
+  var qui = $("avaluador").value.trim();
+  var aQui = (mode === "auto") ? qui : $("avaluat").value.trim();
+  if(!qui){ $("avaluador").focus(); avisa("Cal indicar qui avalua."); return; }
+  if(!aQui){ $("avaluat").focus(); avisa("Cal indicar a qui s'avalua."); return; }
+
+  var detall = {};
+  rubrica.criteris.forEach(function(c, i){
+    var n = c.nivells[tria[i]];
+    detall[c.nom] = (n && typeof n.valor === "number") ? n.valor : "";
+  });
+  registre.push({
+    data: new Date().toISOString(),
+    tipus: NOMS[mode],
+    mode: mode,
+    avaluador: qui,
+    avaluat: aQui,
+    nota: Math.round(nota * 100) / 100,
+    detall: detall,
+    comentari: $("comentari").value.trim(),
+    rubrica: rubrica.meta && rubrica.meta.titol || ""
+  });
+  guarda(CLAU_D, registre);
+  neteja(true);
+  avisa("Avaluació guardada. Ja en tens " + registre.length + " en el registre.");
+});
+
+function avisa(text){
+  $("alerta").hidden = false;
+  $("alerta").textContent = text;
+}
+
+function neteja(mantindreNumeros){
+  tria = {};
+  Array.prototype.forEach.call(document.querySelectorAll(".nivell"), function(l){
+    l.classList.remove("triat");
+    var r = l.querySelector("input"); if(r) r.checked = false;
+  });
+  $("comentari").value = "";
+  if(!mantindreNumeros){ $("avaluador").value = ""; $("avaluat").value = ""; }
+  else if(mode !== "auto"){ $("avaluat").value = ""; $("avaluat").focus(); }
+  calcula();
+}
+$("btn-neteja").addEventListener("click", function(){ neteja(false); });
+
+/* ---------------- Registre ---------------- */
+function pintaRegistre(){
+  if(!registre.length){
+    $("taula-registre").innerHTML = '<p class="buit">Encara no hi ha cap avaluació guardada.</p>';
+    $("taula-resum").innerHTML = '<p class="buit">Ací apareixerà la nota de cada alumne.</p>';
+    $("btn-csv").disabled = true;
+    return;
+  }
+  $("btn-csv").disabled = false;
+  var h = "<tr><th>Data</th><th>Tipus</th><th>Avalua</th><th>Avaluat</th><th style='text-align:right'>Nota</th></tr>";
+  registre.slice().reverse().forEach(function(r){
+    h += "<tr><td>" + esc(new Date(r.data).toLocaleDateString("ca-ES")) + "</td><td>" +
+         esc(r.tipus) + "</td><td>" + esc(r.avaluador) + "</td><td>" + esc(r.avaluat) +
+         "</td><td class='num'>" + num(r.nota) + "</td></tr>";
+  });
+  $("taula-registre").innerHTML = h;
+
+  // Resum: mitjana per tipus i nota final ponderada segons pesosMode.
+  var pm = (rubrica.meta && rubrica.meta.pesosMode) || {hetero:60, co:25, auto:15};
+  var per = {};
+  registre.forEach(function(r){
+    per[r.avaluat] = per[r.avaluat] || {auto:[], co:[], hetero:[]};
+    if(per[r.avaluat][r.mode]) per[r.avaluat][r.mode].push(r.nota);
+  });
+  function mitjana(a){ return a.length ? a.reduce(function(x,y){return x+y;},0)/a.length : null; }
+  var files = "<tr><th>Número</th><th style='text-align:right'>Auto</th><th style='text-align:right'>Co</th><th style='text-align:right'>Hetero</th><th style='text-align:right'>Nota final</th></tr>";
+  Object.keys(per).sort(function(a,b){ return (parseInt(a,10)||0) - (parseInt(b,10)||0); }).forEach(function(k){
+    var m = {auto:mitjana(per[k].auto), co:mitjana(per[k].co), hetero:mitjana(per[k].hetero)};
+    // Només es reparteix el pes dels modes que realment tenen nota, de manera que
+    // una nota parcial no penalitza qui encara no ha rebut totes les avaluacions.
+    var pesTotal = 0, acum = 0;
+    ["auto","co","hetero"].forEach(function(t){
+      if(m[t] != null){ pesTotal += (pm[t] || 0); acum += m[t] * (pm[t] || 0); }
+    });
+    var final = pesTotal ? acum / pesTotal : null;
+    files += "<tr><td>" + esc(k) + "</td>" +
+      "<td class='num'>" + (m.auto == null ? "—" : num(m.auto)) + "</td>" +
+      "<td class='num'>" + (m.co == null ? "—" : num(m.co)) + "</td>" +
+      "<td class='num'>" + (m.hetero == null ? "—" : num(m.hetero)) + "</td>" +
+      "<td class='num'><b>" + (final == null ? "—" : num(final)) + "</b></td></tr>";
+  });
+  $("taula-resum").innerHTML = files;
+  $("ajuda-pesos").textContent = "Pesos aplicats: heteroavaluació " + (pm.hetero||0) +
+    "%, coavaluació " + (pm.co||0) + "%, autoavaluació " + (pm.auto||0) +
+    "%. Si a algú encara li falta algun tipus d'avaluació, la nota es calcula només amb els que té.";
+}
+
+function csv(){
+  var noms = rubrica.criteris.map(function(c){ return c.nom; });
+  var cap = ["Marca de temps","Tipus","Avaluador","Avaluat","Nota total"]
+              .concat(noms).concat(["Comentari","Rúbrica"]);
+  function cel(v){
+    var t = String(v == null ? "" : v);
+    return /[";\n]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t;
+  }
+  var linies = [cap.map(cel).join(";")];
+  registre.forEach(function(r){
+    var f = [new Date(r.data).toLocaleString("ca-ES"), r.tipus, r.avaluador, r.avaluat,
+             num(r.nota)];
+    noms.forEach(function(n){
+      var v = r.detall[n];
+      f.push(typeof v === "number" ? num(v) : "");
+    });
+    f.push(r.comentari, r.rubrica);
+    linies.push(f.map(cel).join(";"));
+  });
+  return "﻿" + linies.join("\r\n");
+}
+
+$("btn-csv").addEventListener("click", function(){
+  var b = new Blob([csv()], {type:"text/csv;charset=utf-8;"});
+  var u = URL.createObjectURL(b), a = document.createElement("a");
+  a.href = u;
+  a.download = "avaluacions-" + new Date().toISOString().slice(0,10) + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
+});
+
+$("btn-buida").addEventListener("click", function(){
+  if(!registre.length) return;
+  // Sense finestres de confirmació: es demana tocar dos vegades seguides.
+  var b = $("btn-buida");
+  if(b.dataset.segur === "1"){
+    registre = []; guarda(CLAU_D, registre);
+    b.dataset.segur = ""; b.textContent = "Buida el registre";
+    pintaRegistre();
+  }else{
+    b.dataset.segur = "1";
+    b.textContent = "Segur? Torna a tocar";
+    setTimeout(function(){ b.dataset.segur = ""; b.textContent = "Buida el registre"; }, 5000);
+  }
+});
+
+/* ---------------- Pestanya rúbrica ---------------- */
+function pintaVistaRubrica(){
+  var m = rubrica.meta || {};
+  $("info-rubrica").innerHTML = "<b>" + esc(m.titol || "Rúbrica sense títol") + "</b><br>" +
+    "<span style='color:var(--suau)'>" + esc(m.descripcio || "") + "</span>";
+  var h = "";
+  rubrica.criteris.forEach(function(c){
+    h += "<div class='criteri'><div class='cap'><b>" + esc(c.nom) + "</b><span class='pes'>" +
+         (c.pes != null ? esc(c.pes) + "%" : "") + "</span></div><table>";
+    c.nivells.forEach(function(n){
+      h += "<tr><td style='width:30%'><b>" + esc(n.etiqueta) + "</b><br><span class='pes'>" +
+           esc(n.valor) + " punts</span></td><td>" + esc(n.descriptor) + "</td></tr>";
+    });
+    h += "</table></div>";
+  });
+  $("vista-rubrica").innerHTML = h;
+}
+
+$("btn-carrega").addEventListener("click", function(){ $("fitxer").click(); });
+$("fitxer").addEventListener("change", function(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  var lector = new FileReader();
+  lector.onload = function(){
+    var dades;
+    try{ dades = JSON.parse(lector.result); }
+    catch(err){ $("info-rubrica").textContent = "El fitxer no és un JSON vàlid."; return; }
+    var problema = validaRubrica(dades);
+    if(problema){ $("info-rubrica").textContent = problema; return; }
+    rubrica = dades; guarda(CLAU_R, rubrica);
+    pintaCriteris(); pintaVistaRubrica(); pintaRegistre();
+  };
+  lector.readAsText(f);
+  e.target.value = "";
+});
+
+$("btn-original").addEventListener("click", function(){
+  rubrica = EXEMPLE; guarda(CLAU_R, rubrica);
+  pintaCriteris(); pintaVistaRubrica(); pintaRegistre();
+});
+
+/* ---------------- Arrancada ---------------- */
+var rGuardada = recupera(CLAU_R);
+if(rGuardada && !validaRubrica(rGuardada)) rubrica = rGuardada;
+var dGuardades = recupera(CLAU_D);
+if(Array.isArray(dGuardades)) registre = dGuardades;
+$("c-avaluat").hidden = true;
+pintaCriteris();
+})();
+</script>
+</body>
+</html>
